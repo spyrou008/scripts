@@ -9,22 +9,23 @@
 ##  For a specific user, To add the script to the bottom of the user profile file: ~/.profile
 ##  For system-wide users, To add the script on the /etc/profile file. 
 ##  Like this: 
-##  $ cp /home/chris/Always/scripts/battery-alert.sh /opt/my_scripts/battery-alert.sh
+##  $ cp /home/chris/github/scripts/battery-alert.sh /opt/my_scripts/battery-alert.sh
 ##  $ mousepad ~/.profile
 ##   sh /opt/my_scripts/battery-alert.sh &
 ##    OR:
-##   sh /home/chris/Always/scripts/battery-alert.sh &
+##   sh /home/chris/github/scripts/battery-alert.sh &
 ## Script works on : Ubuntu 20.04 LTS + Manjaro-xfce-21.0.7
 
 ## to ensure everything is loaded, otherwise the notifications might not work...
-sleep 30
+sleep 20
 
 # string to identify the battery is charging
 str_charging="charging"
 # Value of high battery level, when charging. Value used to remind the cable is to be removed
-battery_high=95
+battery_high=94
 # Value of low battery level, when discharging. Value used to remind the cable is to be plugged in
 battery_low=41
+battery_vlow=21
 
 battery_low_icon=/usr/share/icons/hicolor/scalable/apps/xfce4-battery-critical.svg
 battery_high_icon=/usr/share/icons/hicolor/scalable/apps/xfce4-battery-full-charging.svg
@@ -57,10 +58,13 @@ do
 
 	else
 		# echo Nope Battery is discharging !!!!
-		if [ $battery_percentage -le $battery_low ]; then
+		if [ $battery_percentage -le $battery_vlow ]; then
 			notify-send --icon=$battery_low_icon "Battery Low" "Level: ${battery_percentage}%"
 			paplay /usr/share/sounds/freedesktop/stereo/suspend-error.oga
+		elif [ $battery_percentage -le $battery_low ]; then
+			notify-send --icon=$battery_low_icon "Battery Low" "Level: ${battery_percentage}%"
+			paplay /usr/share/sounds/freedesktop/stereo/dialog-information.oga
 		fi
 	fi
-	sleep 60
+	sleep 180
 done
