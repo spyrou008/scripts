@@ -1,5 +1,8 @@
 #!/bin/bash
 
+## To make this script better : 
+## https://bbs.archlinux.org/viewtopic.php?pid=1431917
+
 ## Script that will look at the battery level on a regular basis
 ## and provide a notification + sound if there is something to do.
 
