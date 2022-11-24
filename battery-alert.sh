@@ -1,33 +1,33 @@
 #!/bin/bash
 
+# v0.1 - init
+
 ## To make this script better : 
 ## https://bbs.archlinux.org/viewtopic.php?pid=1431917
 
 ## Script that will look at the battery level on a regular basis
-## and provide a notification + sound if there is something to do.
+##  and provide a notification + sound if there is something to do.
 
-## To launch the script , it may be needed to do:
-##  chmod +x
+## To make this execuatable
+##  chmod +x ./battery-alert.sh 
+
 ## To launch the script after logging in, a solution is:
 ##  For a specific user, To add the script to the bottom of the user profile file: ~/.profile
 ##  For system-wide users, To add the script on the /etc/profile file. 
 ##  Like this: 
-##  $ cp /home/chris/github/scripts/battery-alert.sh /opt/my_scripts/battery-alert.sh
+##  $ cp /home/$USER/github/scripts/battery-alert.sh /opt/my_scripts/battery-alert.sh
 ##  $ mousepad ~/.profile
 ##   sh /opt/my_scripts/battery-alert.sh &
 ##    OR:
-##   sh /home/chris/github/scripts/battery-alert.sh &
+##   sh /home/$USER/github/scripts/battery-alert.sh &
 ## Script works on : Ubuntu 20.04 LTS + Manjaro-xfce-21.0.7
 
-## to ensure everything is loaded, otherwise the notifications might not work...
-sleep 20
+sleep 20 	## to ensure everything is loaded, otherwise the notifications might not work...
 
-# string to identify the battery is charging
-str_charging="charging"
-# Value of high battery level, when charging. Value used to remind the cable is to be removed
-battery_high=94
-# Value of low battery level, when discharging. Value used to remind the cable is to be plugged in
-battery_low=41
+str_charging="charging"	# string to identify the battery is charging
+
+battery_high=94		# Value of high battery level, when charging. Value used to remind the cable is to be removed
+battery_low=41		# Value of low battery level, when discharging. Value used to remind the cable is to be plugged in
 battery_vlow=21
 
 battery_low_icon=/usr/share/icons/hicolor/scalable/apps/xfce4-battery-critical.svg
@@ -58,7 +58,6 @@ do
 			notify-send --icon=$battery_high_icon "Battery Full" "Level: ${battery_percentage}% "
 			paplay /usr/share/sounds/freedesktop/stereo/dialog-information.oga
 		fi
-
 	else
 		# echo Nope Battery is discharging !!!!
 		if [ $battery_percentage -le $battery_vlow ]; then

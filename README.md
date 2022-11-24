@@ -1,2 +1,2 @@
 # scripts
-My list of accessible scripts
+My list of public scripts
