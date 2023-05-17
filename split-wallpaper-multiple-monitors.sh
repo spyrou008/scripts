@@ -12,7 +12,7 @@
 
 # to use me: 
 ## launch the script and give the directory where all the wallpapers to split are located. 
-## eg.: split-wallpaper-multiple-monitors.sh ./DIRECTORY
+## eg.: bash ./split-wallpaper-multiple-monitors.sh ./DIRECTORY
 ##   folder-01
 ##   +-> file-11.jpg
 ##   +-> file-12.jpg
