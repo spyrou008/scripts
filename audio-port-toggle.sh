@@ -1,18 +1,34 @@
 #!/bin/bash
 
 # Execute me : 
-# 	bash /home/chris/github/scripts/audio-port-toggle.sh
+# 	bash ~/github/scripts/audio-port-toggle.sh
 # in `xfce4-keyboard-settings` > App shortcut > and map the above command with `Super + H`
 
 # v.0.1 ChatGPT initial version
 # v.0.2 tweak the toggle to my audio needs. file in /tmp/ . Add pactl commands and notification. 
 # v.0.3 switch from SINK ID to SINK NAME. to prevent batch to fail with or without the docking station. SINK ID changes , but not the SINK NAME
+# v.0.4 All the current applications moved to the new output device. Plus add a check if the headphones are connected or not. 
+
+
+# FYI: this script is just a shortcut for the following command line , which controls `pavucontrol` > Tab "Output Devices"
+#  $ pactl set-sink-port SINK PORT
+# where SINK is given by the commands :
+#  $ pactl get-default-sink
+#  $ pactl list short sinks
+# where PORT is given by the commands : (look for "Active Port:")
+#  $ pactl list sinks
+# FYI: this script is just a shortcut for the following command line , which controls `pavucontrol` > Tab "Configuration"
+#  $ pactl set-card-profile <card_name> <profile_name> 
+# where <card_name> & <profile_name> are given by the command : `pactl list cards`
+
 
 # Define a variable to toggle between Speaker and Headphones. default value is Speaker.
 toggleSinkPort="Speaker"
 fileSinkPort=/tmp/toggleSinkPort.tmp
+# Card ID can change if dock station is on or off. so below NAME is given by `pactl list cards`
+myCardName="alsa_card.pci-0000_00_1f.3-platform-skl_hda_dsp_generic" 
 # SINK ID can change if dock station is on or off. so below NAME is given by either `pactl get-default-sink` OR `pactl list short sinks`
-mySinkToToggle="alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink" 
+mySinkToToggle="alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink"
 
 # Check if the toggle file exists, and if not, create it with the default value
 if [[ ! -f $fileSinkPort ]]; then
@@ -25,18 +41,74 @@ toggleSinkPort=$(<$fileSinkPort)
 # Toggle the value
 if [[ $toggleSinkPort == "Speaker" ]]; then
 	toggleSinkPort="Headphones"
-	# Set the specified source to the specified  port (identified by its symbolic name).
-	pactl set-sink-port $mySinkToToggle "[Out] Headphones"
+
+	if pactl list cards | grep -q "\[Out\] Headphones: .* not available"; then
+		echo "Headphones are NOT connected."
+
+	else
+		echo "Headphones are connected."
+
+		# Get the sink name you want to move the sink inputs to. The list of available sinks (output devices) is given by : 
+		#  pactl list sinks | grep "Name:"
+		sink_name="alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__Headphones__sink"
+
+		# Set the specified card profile (identified by its symbolic name).
+		# pactl set-card-profile $myCardName "HiFi (HDMI1, HDMI2, HDMI3, Headphones, Headset, Mic1)"
+		pactl set-card-profile alsa_card.pci-0000_00_1f.3-platform-skl_hda_dsp_generic "HiFi (HDMI1, HDMI2, HDMI3, Headphones, Headset, Mic1)"
+		# Set the specified source to the specified  port (identified by its symbolic name).
+		# pactl set-sink-port $mySinkToToggle "[Out] Headphones"
+		pactl set-sink-port "$sink_name" "[Out] Headphones"
+
+
+		# Set the mute status of the specified sink: Remove the mute , just in case, for the switch.
+		pactl set-sink-mute "$sink_name" "0"
+		# Set  the volume of the specified sink. VOLUME can be specified as a percentage: Low volume , just in case, for the switch.
+		pactl set-sink-volume "$sink_name" "10%"
+
+		# Change the default output device :
+		pacmd set-default-sink "$sink_name"
+
+		# Now we need to take care of all the current applications that may have lost the sound during the switch. List all the running sink input streams (applications) , get their ID and remove the # character
+		sink_inputs=$(pactl list sink-inputs | grep 'Sink Input #' | awk '{print $3}' | sed 's/#//')
+		# Move each sink input (application) to the desired sink (output device)
+		for index in $sink_inputs; do
+		    pactl move-sink-input "$index" "$sink_name"
+		done
+
+	fi
+
 else
 	toggleSinkPort="Speaker"
+
+	# Get the sink name you want to move the sink inputs to. The list of available sinks (output devices) is given by : 
+	#  pactl list sinks | grep "Name:"
+	sink_name="alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__Speaker__sink"
+
+	# Set the specified card profile (identified by its symbolic name).
+	# pactl set-card-profile $myCardName "HiFi (HDMI1, HDMI2, HDMI3, Headset, Mic1, Speaker)"
+	pactl set-card-profile alsa_card.pci-0000_00_1f.3-platform-skl_hda_dsp_generic "HiFi (HDMI1, HDMI2, HDMI3, Headset, Mic1, Speaker)"
 	# Set the specified source to the specified  port (identified by its symbolic name).
-	pactl set-sink-port $mySinkToToggle "[Out] Speaker"
+	# pactl set-sink-port $mySinkToToggle "[Out] Speaker"
+	pactl set-sink-port "$sink_name" "[Out] Speaker"
+
+
+	# Set the mute status of the specified sink: Remove the mute , just in case, for the switch.
+	pactl set-sink-mute "$sink_name" "0"
+	# Set  the volume of the specified sink. VOLUME can be specified as a percentage: Low volume , just in case, for the switch.
+	pactl set-sink-volume "$sink_name" "10%"
+
+	# Change the default output device :
+	pacmd set-default-sink "$sink_name"
+
+	# Now we need to take care of all the current applications that may have lost the sound during the switch. List all the running sink input streams (applications) , get their ID and remove the # character
+	sink_inputs=$(pactl list sink-inputs | grep 'Sink Input #' | awk '{print $3}' | sed 's/#//')
+	# Move each sink input (application) to the desired sink (output device)
+	for index in $sink_inputs; do
+	    pactl move-sink-input "$index" "$sink_name"
+	done
+
 fi
 
-# Set the mute status of the specified sink: Remove the mute , just in case, for the switch.
-pactl set-sink-mute $mySinkToToggle "0"
-# Set  the volume of the specified sink. VOLUME can be specified as a percentage: Low volume , just in case, for the switch.
-pactl set-sink-volume $mySinkToToggle "10%"
 
 # Write the updated value back to the toggle file
 echo "$toggleSinkPort" > $fileSinkPort
@@ -45,8 +117,26 @@ echo "$toggleSinkPort" > $fileSinkPort
 echo "toggleSinkPort is now: $toggleSinkPort"
 notify-send -i notification-audio-volume-high --hint=string:x-canonical-private-synchronous: "Audio is now on: $toggleSinkPort"
 
-
 exit
+
+
+
+# --------------------------------------------------------------------------------------------------------------------------------------------
+
+TV LG on the right hand side with Small round Dock Dell
+$ pactl list short sinks
+0	alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp_5__sink	module-alsa-card.c	s16le 2ch 48000Hz	IDLE
+1	alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp_4__sink	module-alsa-card.c	s16le 2ch 48000Hz	IDLE
+2	alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp_3__sink	module-alsa-card.c	s16le 2ch 48000Hz	RUNNING
+3	alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink	module-alsa-card.c	s16le 2ch 48000Hz	IDLE
+
+Computer:
+$ pactl list short sinks
+0	alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp_5__sink	module-alsa-card.c	s16le 2ch 48000Hz	IDLE
+1	alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp_4__sink	module-alsa-card.c	s16le 2ch 48000Hz	IDLE
+2	alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp_3__sink	module-alsa-card.c	s16le 2ch 48000Hz	IDLE
+3	alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink	module-alsa-card.c	s16le 2ch 48000Hz	RUNNING
+
 
 
 # --------------------------------------------------------------------------------------------------------------------------------------------
@@ -128,6 +218,7 @@ do
 done;
 
 exit
+
 
 
 # Work in progress below ...
