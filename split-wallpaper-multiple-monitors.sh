@@ -3,6 +3,10 @@
 
 # v0.1 - init
 
+## WARNING: The convert command is deprecated in IMv7, use "magick" instead of "convert" or "magick convert"
+
+
+
 # split-wallpaper-multiple-monitors.sh
 ## Split a wallpaper for multiple monitors on GNU/Linux
 # source: https://blog.paranoidpenguin.net/2015/10/how-to-split-a-wallpaper-for-multiple-monitors-on-gnulinux/

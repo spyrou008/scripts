@@ -2,6 +2,7 @@
 
 # v0.1 - init
 # v0.2 - distinction between PC and the Stadia controller
+# v0.3 - Improved error handling, configurability, and code organization. with Cursor - AI Code Editor
 
 ## To make this script better : 
 ## https://bbs.archlinux.org/viewtopic.php?pid=1431917
@@ -23,31 +24,97 @@
 ##   sh /home/$USER/github/scripts/battery-alert.sh &
 ## Script works on : Ubuntu 20.04 LTS + Manjaro-xfce-20.0.1
 
-sleep 20 	## Default: 20. Time in sec to wait to ensure everything is loaded, otherwise the notifications might not work...
+###################
+# Configuration
+###################
 
-str_charging="charging"			# string to identify the battery is charging
-str_pending_charge="pending-charge"	# string to identify the battery is charging
+# Battery level thresholds
+readonly BATTERY_HIGH=81		# Default: 81. Value of high battery level, when charging. Value used to remind the cable is to be removed. Notify when charging reaches this level
+readonly BATTERY_LOW=39			# Default: 39. Value of low battery level, when discharging. Value used to remind the cable is to be plugged in. First warning when discharging
+readonly BATTERY_CRITICAL=21	# Default: 21. Value of very low battery level. Urgent warning when discharging
 
-battery_high=81		# Default: 81. Value of high battery level, when charging. Value used to remind the cable is to be removed
-battery_low=39		# Default: 39. Value of low battery level, when discharging. Value used to remind the cable is to be plugged in
-battery_vlow=21		# Default: 21. Value of very low battery level
+# Notification icons
+readonly ICON_LOW="/usr/share/icons/hicolor/scalable/apps/xfce4-battery-critical.svg"
+readonly ICON_HIGH="/usr/share/icons/hicolor/scalable/apps/xfce4-battery-full-charging.svg"
 
-battery_low_icon=/usr/share/icons/hicolor/scalable/apps/xfce4-battery-critical.svg
-battery_high_icon=/usr/share/icons/hicolor/scalable/apps/xfce4-battery-full-charging.svg
+# Sound files
+readonly SOUND_NORMAL="/usr/share/sounds/freedesktop/stereo/dialog-information.oga"
+readonly SOUND_CRITICAL="/usr/share/sounds/freedesktop/stereo/suspend-error.oga"
 
-while true
-do
+# Check interval (in seconds)
+readonly CHECK_INTERVAL=180	## Default: 180. Time in sec to wait between checks
+readonly STARTUP_DELAY=20	## Default: 20. Time in sec to wait to ensure everything is loaded, otherwise the notifications might not work...
 
+###################
+# Helper Functions
+###################
+
+notify() {
+    local title="$1"
+    local message="$2"
+    local icon="$3"
+    local sound="$4"
+
+	    # Show notification and play sound
+    if ! notify-send --icon="$icon" "$title" "$message"; then
+        echo "ERROR: Failed to send notification: $title - $message"
+    fi
+    
+    if ! paplay "$sound" 2>/dev/null; then
+        echo "ERROR: Failed to play sound: $sound"
+    fi
+}
+
+get_battery_info() {
+    local device="$1"
+    local info
 	# -----------------------> LAPTOP Battery <-----------------------
 	# export DISPLAY=:0.0
 	# I do not want to install ACPI
 	# battery_level=`acpi -b | grep -P -o '[0-9]+(?=%)'`
 	# In Ubuntu UPOWER is installed by default
-	pcbat_battery_percentage=`upower -e | grep 'BAT' | xargs upower -i | grep percentage | grep -P -o '[0-9]+(?=%)'`
-	pcbat_battery_state=`upower -e | grep 'BAT' | xargs upower -i | grep state | awk -v OFS='\t' '{print $2}'`
 
-	# echo battery percentage is : $pcbat_battery_percentage
-	# echo battery state is : $pcbat_battery_state
+    info=$(upower -e | grep "$device" | xargs upower -i 2>/dev/null)
+    if [ -n "$info" ]; then
+        echo "$info"
+    else
+        echo "DEBUG: No battery info found for device: $device"
+    fi
+}
+
+get_battery_percentage() {
+    local info="$1"
+    local percentage
+    percentage=$(echo "$info" | grep percentage | grep -P -o '[0-9]+(?=%)')
+    echo "${percentage:-0}"  # Return 0 if no percentage found
+    # echo "$info" | grep percentage | grep -P -o '[0-9]+(?=%)'
+}
+
+get_battery_state() {
+    local info="$1"
+    local state
+    state=$(echo "$info" | grep state | awk '{print $2}')
+    echo "${state:-unknown}"  # Return 'unknown' if no state found
+    # echo "$info" | grep state | awk '{print $2}'
+}
+
+check_laptop_battery() {
+    local battery_info
+    battery_info=$(get_battery_info "BAT")
+    
+	echo "INFO: Laptop battery info: $battery_info"
+    if [ -z "$battery_info" ]; then
+        echo "DEBUG: No laptop battery found"
+        return
+    fi
+
+    local percentage
+    percentage=$(get_battery_percentage "$battery_info")
+    local state
+    state=$(get_battery_state "$battery_info")
+
+    # echo "INFO: Laptop battery percentage: $percentage"
+    # echo "INFO: Laptop battery state: $state"
 
 	## Some values:
 	#    state:               discharging
@@ -55,44 +122,66 @@ do
 	#    state:               pending-charge	# i.e. Using the Power source to function, so battery is idle
 	#    percentage:          71%
 
-	if [ $pcbat_battery_state = $str_charging ] || [ $pcbat_battery_state = $str_pending_charge ] ; then # if charging OR pending charge
+    case "$state" in
+		# if charging OR pending charge OR fully charged
+        "charging"|"pending-charge"|"fully-charged") 	
+            if [ "$percentage" -ge "$BATTERY_HIGH" ]; then
+                notify "Battery Full" "Level: ${percentage}%" "$ICON_HIGH" "$SOUND_NORMAL"
+				# echo "INFO: Battery Full" "Level: ${percentage}% "
+				
+            fi
+            ;;
+        "discharging")
+            if [ "$percentage" -le "$BATTERY_CRITICAL" ]; then
+                notify "Battery Very Low" "Level: ${percentage}%" "$ICON_LOW" "$SOUND_CRITICAL"
+            elif [ "$percentage" -le "$BATTERY_LOW" ]; then
+                notify "Battery Low" "Level: ${percentage}%" "$ICON_LOW" "$SOUND_NORMAL"
+            fi
+            ;;
+    esac
+}
 
-		# echo Yes Battery charging !!!
-		if [ $pcbat_battery_percentage -ge $battery_high ]; then
-			notify-send --icon=$battery_high_icon "Battery Full" "Level: ${pcbat_battery_percentage}% "
-			paplay /usr/share/sounds/freedesktop/stereo/dialog-information.oga
-		fi
-	else
-		# echo Nope Battery is not charging, i.e. discharging or pending-charge !!!!
-		if [ $pcbat_battery_percentage -le $battery_vlow ]; then
-			notify-send --icon=$battery_low_icon "Battery Very Low" "Level: ${pcbat_battery_percentage}%"
-			paplay /usr/share/sounds/freedesktop/stereo/suspend-error.oga
-		elif [ $pcbat_battery_percentage -le $battery_low ]; then
-			notify-send --icon=$battery_low_icon "Battery Low" "Level: ${pcbat_battery_percentage}%"
-			paplay /usr/share/sounds/freedesktop/stereo/dialog-information.oga
-		fi
-	fi
-
-
+check_stadia_controller() {
 	# -----------------------> Stadia gaming controller Battery <-----------------------
 	# for Stadia gaming controller over Bluetooth
-	stadia_battery_percentage=`upower -e | grep 'gaming_input_dev_E4_' | xargs upower -i | grep percentage | grep -P -o '[0-9]+(?=%)'`
-	if ! [ -z "$stadia_battery_percentage" ]; then 	# If controller is found over Bluetooth (i.e. the variable is NOT empty)
-		# Controller on Bluetooth. State is always discharging over Bluetooth.
-		# echo stadia battery percentage is : $stadia_battery_percentage
-		if [ $stadia_battery_percentage -le $battery_vlow ]; then
-			notify-send --icon=$battery_low_icon "Stadia Controller Battery Very Low" "Level: ${stadia_battery_percentage}%"
-			paplay /usr/share/sounds/freedesktop/stereo/suspend-error.oga
-		elif [ $stadia_battery_percentage -le $battery_low ]; then
-			notify-send --icon=$battery_low_icon "Stadia Controller Battery Low" "Level: ${stadia_battery_percentage}%"
-			paplay /usr/share/sounds/freedesktop/stereo/dialog-information.oga
-		fi
-	# else	# If controller NOT found over Bluetooth (i.e. the variable is empty)
-		# echo Stadia Controller NOT found over Bluetooth
-	fi
+    local controller_info
+    controller_info=$(get_battery_info "gaming_input_dev_E4_")
+    
+    if [ -z "$controller_info" ]; then
+        echo "DEBUG: No Stadia controller battery found"
+        return
+    fi
 
-	# echo ""
-	sleep 180	# Default: 180. Time in sec to wait before next check and optional notif & sound
+	# If controller is found over Bluetooth (i.e. the variable is NOT empty)
+	# Controller on Bluetooth. State is always discharging over Bluetooth.
+	# echo stadia battery percentage is : $stadia_battery_percentage
+
+    local percentage
+    percentage=$(get_battery_percentage "$controller_info")
+
+	echo "INFO: Stadia controller battery percentage: $percentage"
+
+    if [ "$percentage" -le "$BATTERY_CRITICAL" ]; then
+        notify "Stadia Controller Battery Very Low" "Level: ${percentage}%" "$ICON_LOW" "$SOUND_CRITICAL"
+    elif [ "$percentage" -le "$BATTERY_LOW" ]; then
+        notify "Stadia Controller Battery Low" "Level: ${percentage}%" "$ICON_LOW" "$SOUND_NORMAL"
+    fi
+}
+
+###################
+# Main Script
+###################
+
+echo "INFO: Battery alert script starting"
+
+# Ensure notifications work by waiting for desktop environment
+sleep "$STARTUP_DELAY"
+
+# Main loop
+while true; do
+    check_laptop_battery
+#    check_stadia_controller
+    sleep "$CHECK_INTERVAL"
 done
 
 # change 2 sleep <----------------------- <----------------------- <----------------------- <-----------------------
