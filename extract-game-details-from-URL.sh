@@ -207,6 +207,16 @@ extract_content() {
 
 ----------
 Can add: if available
+
+Get Supported sytems    (from the other G0G page ?)
+Get Size                (from the other G0G page ?)
+Get Videos . like the Screenshots
+Search PCGamingWiki Page. or put placeholder
+Extract a nice About spoiler . 
+- like this page: https://forum.torrminatorr.com/viewtopic.php?p=150478#p150478
+-           (from the other G0G page ?)
+Get  Minimum system requirements        (from the other G0G page ?)
+
 Size
 PCGamingWiki Page link
 About
