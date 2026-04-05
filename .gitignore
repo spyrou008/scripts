@@ -1,8 +1,10 @@
-# just a reminder
-/python/URGENT TO DO BEFORE UPLOAD INTO GITHUB.md
-
 # make sure not to upload PRIVATE keys
 /python/api_PRIVATE_API_KEY_T212
+
+# make sure not to upload output files
+/python/api_trading212.trading_instruments.*.txt
+
+
 
 # make sure not to upload python modules . eg: `requests` folder
 /python/requests/
