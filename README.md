@@ -21,3 +21,9 @@ Split all wallpapers, from the same folder, for dual monitors on GNU/Linux.
 Inspired by [this article](https://blog.paranoidpenguin.net/2015/10/how-to-split-a-wallpaper-for-multiple-monitors-on-gnulinux/ "this article")
 > :link: [script link](https://github.com/spyrou008/scripts/blob/main/split-wallpaper-multiple-monitors.sh "script link")
 
+
+# To do 
+1. in python, learn how to use : 
+sqlite3
+sqlite3 ~/.local/share/Shortwave/Shortwave-copy.db
+
