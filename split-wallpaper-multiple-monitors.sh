@@ -2,21 +2,14 @@
 ## FYI: Bash is the default Shell in Ubuntu
 
 # v0.1 - init
-
-## WARNING: The convert command is deprecated in IMv7, use "magick" instead of "convert" or "magick convert"
-
-
+# v0.2 - The convert command is deprecated in IMv7, use "magick" instead
 
 # split-wallpaper-multiple-monitors.sh
 ## Split a wallpaper for multiple monitors on GNU/Linux
-# source: https://blog.paranoidpenguin.net/2015/10/how-to-split-a-wallpaper-for-multiple-monitors-on-gnulinux/
-
-# To make this execuatable
-## chmod +x ./split-wallpaper-multiple-monitors.sh 
 
 # to use me: 
 ## launch the script and give the directory where all the wallpapers to split are located. 
-## eg.: bash ./split-wallpaper-multiple-monitors.sh ./DIRECTORY
+## eg.: bash ~/github/scripts/split-wallpaper-multiple-monitors.sh ./DIRECTORY
 ##   folder-01
 ##   +-> file-11.jpg
 ##   +-> file-12.jpg
@@ -57,8 +50,8 @@ for f in "$folderToScan"/*; do
 		filename=$(basename -- "$f") # remove folder path
 		extension="${filename##*.}" # get only extension
 		filenameNoExt="${filename%.*}" # get filename without extension
-		echo "  convert -crop 50%x100% +repage ""$DIR""/""$filename"" ""$DIR""/""$filenameNoExt""_%d.""$extension"
-		convert -crop 50%x100% +repage "$DIR"/"$filename" "$DIR"/"$filenameNoExt"_%d."$extension"
+		# echo "  $ magick ""$DIR""/""$filename"" -crop 50%x100% +repage ""$DIR""/""$filenameNoExt""_%d.""$extension"
+		magick "$DIR"/"$filename" -crop 50%x100% +repage "$DIR"/"$filenameNoExt"_%d."$extension"
 	else 
 		echo ""
 		echo -e "\e[0;33m"" Warning: ""\e[0m""$f"" is not a file." # Warning in Brown
