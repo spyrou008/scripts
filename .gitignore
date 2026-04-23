@@ -1,4 +1,4 @@
-# make sure not to upload PRIVATE keys
+# make sure not to upload PRIVATE keys & *.pem
 /python/api_PRIVATE_API_KEY_T212
 
 # make sure not to upload output files
